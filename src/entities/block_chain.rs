@@ -46,4 +46,9 @@ impl BlockChain {
         self.blocks.push(new_block);
         println!("Блок {} успішно замайнено та додано до ланцюга.", new_index);
     }
+
+    pub fn validate_block(block: &Block, difficulty: u32) -> bool {
+        let target = "0".repeat(difficulty as usize);
+        block.hash.starts_with(&target)
+    }
 }

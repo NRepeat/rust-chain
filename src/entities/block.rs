@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct Block {
     pub index: u32,
     timestamp: u64,
-    data: Vec<u8>,
+    pub data: Vec<u8>,
     pub previous_hash: String,
     pub hash: String,
     pub nonce: u32,
