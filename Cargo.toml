@@ -5,7 +5,8 @@ edition = "2024"
 
 [dependencies]
 sha256 = "1.6.0"
-uuid = "1.18.1"
+[dependencies.uuid]
+version = "1.18.1"
 features = [
     "v4",
 ]

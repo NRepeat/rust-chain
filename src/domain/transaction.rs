@@ -28,6 +28,6 @@ impl Transaction {
         return self.from != self.to
             && !self.amount.is_nan()
             && !self.amount.is_infinite()
-            && self.amount > 0;
+            && self.amount > 0.0;
     }
 }

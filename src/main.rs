@@ -15,32 +15,7 @@ fn main() {
 
     create_genesis_block(&mut blockchain_repo, DIFFICULTY);
 
-    let transactions = vec![
-        vec![
-            Transaction {
-                from: "A".to_string(),
-                to: "B".to_string(),
-                amount: 10,
-            },
-            Transaction {
-                from: "B".to_string(),
-                to: "C".to_string(),
-                amount: 5,
-            },
-        ],
-        vec![
-            Transaction {
-                from: "A".to_string(),
-                to: "B".to_string(),
-                amount: 10,
-            },
-            Transaction {
-                from: "B".to_string(),
-                to: "C".to_string(),
-                amount: 5,
-            },
-        ],
-    ];
+    let transactions = vec![];
     for transaction in transactions {
         add_new_block(&mut blockchain_repo, transaction, DIFFICULTY);
     }
