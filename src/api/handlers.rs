@@ -1,7 +1,7 @@
-use crate::domain::block::Block;
 use crate::domain::blockchain_repository::BlockchainRepository;
+use crate::domain::mempool_repository::MempoolRepository;
 use crate::domain::user_state_repository::UserStateRepository;
-use crate::{api::server::AppState, domain::mempool_repository::MempoolRepository};
+use crate::domain::{app_state::AppState, block::Block};
 use axum::{Json, extract::State};
 
 pub async fn get_all_blocks_handler<B, M, U>(

@@ -6,5 +6,5 @@ use crate::api::server;
 
 #[tokio::main]
 async fn main() {
-    server::app(4200).await;
+    server::app().await;
 }
