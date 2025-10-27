@@ -1,7 +1,8 @@
 use crate::domain::transaction::Transaction;
+use serde::Serialize;
 use sha256::digest;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Block {
     pub index: u32,
     pub timestamp: u64,

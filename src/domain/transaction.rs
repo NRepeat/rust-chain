@@ -1,6 +1,8 @@
+use serde::Serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Serialize, Clone)]
 pub struct Transaction {
     pub id: Uuid,
     pub from: Uuid,

@@ -1,4 +1,5 @@
 use crate::domain::{block::Block, blockchain_repository::BlockchainRepository};
+use async_trait::async_trait;
 
 pub struct InMemoryBlockchainRepository {
     blocks: Vec<Block>,
@@ -10,16 +11,17 @@ impl InMemoryBlockchainRepository {
     }
 }
 
+#[async_trait]
 impl BlockchainRepository for InMemoryBlockchainRepository {
-    fn get_all_blocks(&self) -> Vec<Block> {
+    async fn get_all_blocks(&self) -> Vec<Block> {
         self.blocks.clone()
     }
 
-    fn add_block(&mut self, block: Block) {
+    async fn add_block(&mut self, block: Block) {
         self.blocks.push(block);
     }
 
-    fn get_last_block(&self) -> Option<Block> {
+    async fn get_last_block(&self) -> Option<Block> {
         self.blocks.last().cloned()
     }
 }

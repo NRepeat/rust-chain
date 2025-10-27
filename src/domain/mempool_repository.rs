@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::domain::transaction::Transaction;
 
-pub trait MempoolRepository {
+pub trait MempoolRepository: Send + Sync {
     fn add_transaction(&mut self, transaction: Transaction);
     fn get_all_transactions(&self) -> &VecDeque<Transaction>;
     fn get_last_transaction(&self) -> Option<&Transaction>;

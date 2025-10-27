@@ -36,11 +36,9 @@ impl UserStateRepository for InMemoryUserStateRepository {
             return false;
         }
 
-        // Update sender's balance
         let new_sender_balance = sender_balance - transaction.amount;
         self.balances.insert(transaction.from, new_sender_balance);
 
-        // Update receiver's balance
         let receiver_balance = self.get_balance(&transaction.to);
         let new_receiver_balance = receiver_balance + transaction.amount;
         self.balances.insert(transaction.to, new_receiver_balance);
