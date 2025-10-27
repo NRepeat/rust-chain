@@ -4,6 +4,9 @@ use clap::Parser;
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     #[arg(long)]
+    pub id: String,
+
+    #[arg(long)]
     pub port: u16,
 
     #[arg(long, value_delimiter = ',')]

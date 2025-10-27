@@ -1,5 +1,6 @@
 pub mod app_state;
 pub mod block;
+pub mod block_header;
 pub mod blockchain_repository;
 pub mod mempool;
 pub mod mempool_repository;

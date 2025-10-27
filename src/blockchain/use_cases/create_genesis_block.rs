@@ -1,16 +1,20 @@
-use crate::domain::{block::Block, blockchain_repository::BlockchainRepository};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::env;
 
-pub fn create_genesis_block(blockchain_repository: &mut dyn BlockchainRepository, difficulty: u32) {
-    let mut genesis_block = Block::new(
+use crate::domain::block::Block;
+use crate::domain::blockchain_repository::BlockchainRepository;
+
+pub fn create_genesis_block(blockchain_repository: &mut dyn BlockchainRepository) {
+    let shared_key = env::var("SHARED_KEY").expect("SHARED_KEY");
+
+    let genesis_block = Block::new(
         0,
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
+        0,
+        "GENESIS".to_string(),
+        0,
         vec![],
         "0".to_string(),
+        shared_key,
     );
-    genesis_block.mine_block(difficulty);
+
     blockchain_repository.add_block(genesis_block);
 }
