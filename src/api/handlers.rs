@@ -2,6 +2,7 @@ use crate::api::dtos::{CreateTransactionDto, CreateUserDto};
 use crate::domain::blockchain_repository::BlockchainRepository;
 use crate::domain::mempool_repository::MempoolRepository;
 use crate::domain::user_state_repository::UserStateRepository;
+use crate::domain::vote::Vote;
 use crate::domain::{app_state::AppState, block::Block, transaction::Transaction};
 use axum::{
     Json,
@@ -174,6 +175,52 @@ where
         "[API /block]: ✅ Блок #{} пройшов перевірку.",
         received_block.header.height
     );
+    let block_hash = received_block.hash.clone();
+    let proposer_id = received_block.header.proposer_id.clone();
     blockchain.add_block(received_block).await;
-    (StatusCode::OK, "Block accepted and added".to_string())
+
+    let my_id = app_state.node.lock().await.id.clone();
+    let vote = Vote {
+        block_hash: block_hash,
+        voter_id: my_id,
+        decision: "ACK".to_string(),
+    };
+    let peers = app_state.node.lock().await.peers.clone();
+    let http_client = app_state.http_client;
+    let peer_addresses = app_state.node.lock().await.peers.clone();
+    for peer_addr in &peer_addresses {
+        let target_url = format!("http://{}/vote", peer_addr);
+
+        let _ = http_client.post(&target_url).json(&vote).send().await;
+    }
+    (StatusCode::OK, "Block accepted, ACK sent".to_string())
+}
+
+pub async fn accept_vote_handler<B, M, U>(
+    State(app_state): State<AppState<B, M, U>>,
+    Json(vote): Json<Vote>,
+) -> (StatusCode, String)
+where
+    B: BlockchainRepository + Send + Sync + 'static,
+    M: MempoolRepository + Send + Sync + 'static,
+    U: UserStateRepository + Send + Sync + 'static,
+{
+    let my_id = app_state.node.lock().await.id.clone();
+    println!(
+        "[API /vote]: 📥 (Я {}) Отримано голос від {}: {} за блок ...{}",
+        my_id,
+        vote.voter_id,
+        vote.decision,
+        &vote.block_hash[..5]
+    );
+
+    // --- ЛОГІКА ЛІДЕРА (Пункт 2.6) ---
+    // 1. Сохранить этот голос где-то (напр., в новом `Arc<Mutex<HashMap>>`)
+    // 2. Посчитать, сколько голосов "ACK" для `vote.block_hash`
+    // 3. Если `count >= (n-1)/2` (кворум), то Лидер...
+    // 4. ...добавляет блок в свой `blockchain_repo`
+
+    // (Пока мы просто выводим лог)
+
+    (StatusCode::OK, "Vote received".to_string())
 }

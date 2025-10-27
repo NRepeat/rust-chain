@@ -1,6 +1,6 @@
 use crate::api::args::Args;
 use crate::api::handlers::{
-    accept_block_handler, create_transaction_handler, create_user_handler,
+    accept_block_handler, accept_vote_handler, create_transaction_handler, create_user_handler,
     get_all_balances_handler, get_all_blocks_handler, get_all_transactions_handler,
     get_balance_handler,
 };
@@ -18,6 +18,7 @@ use axum::{
     routing::{get, post},
 };
 use clap::Parser;
+use reqwest::Client;
 use std::env;
 use std::sync::Arc;
 use tokio::signal;
@@ -25,6 +26,7 @@ use tokio::sync::Mutex;
 
 pub async fn app() {
     let args = Args::parse();
+    let http_client = Client::new();
     println!("  -> Id: {}", args.id);
     println!("  -> Port: {}", args.port);
     println!("  -> Peers: {:?}", args.peers);
@@ -46,6 +48,7 @@ pub async fn app() {
         user_state_repo: shared_user_state_repo,
         node: shared_node,
         shared_key: shared_key,
+        http_client: http_client.clone(),
     };
     let consensus_state = app_state.clone();
     create_genesis_block(app_state.blockchain_repo.clone()).await;
@@ -62,6 +65,7 @@ pub async fn app() {
         .route("/block", post(accept_block_handler))
         .route("/balances", get(get_all_balances_handler))
         .route("/balance/:address", get(get_balance_handler))
+        .route("/vote", post(accept_vote_handler))
         .with_state(app_state.clone());
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.port))
         .await
