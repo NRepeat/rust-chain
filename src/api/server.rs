@@ -1,5 +1,8 @@
 use crate::api::args::Args;
-use crate::api::handlers::get_all_blocks_handler;
+use crate::api::handlers::{
+    create_transaction_handler, get_all_balances_handler, get_all_blocks_handler,
+    get_all_transactions_handler, get_balance_handler,
+};
 use crate::blockchain::use_cases::create_genesis_block::create_genesis_block;
 use crate::blockchain::use_cases::pos_consensus_loop::pos_consensus_loop;
 use crate::domain::app_state::AppState;
@@ -9,7 +12,10 @@ use crate::infrastructure::{
     in_memory_user_state_repository::InMemoryUserStateRepository,
     mempool_repository::InMemoryMempoolRepository,
 };
-use axum::{Router, routing::get};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use clap::Parser;
 use std::env;
 use std::sync::Arc;
@@ -44,8 +50,15 @@ pub async fn app() {
 
     tokio::spawn(pos_consensus_loop(consensus_state));
     let app = Router::new()
+        .without_v07_checks()
         .route("/", get(|| async { "Hello, World!" }))
         .route("/blocks", get(get_all_blocks_handler))
+        .route(
+            "/transactions",
+            post(create_transaction_handler).get(get_all_transactions_handler),
+        )
+        .route("/balances", get(get_all_balances_handler))
+        .route("/balance/:address", get(get_balance_handler))
         .with_state(app_state.clone());
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.port))
         .await

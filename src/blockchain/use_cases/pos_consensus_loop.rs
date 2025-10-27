@@ -61,10 +61,7 @@ where
                 .filter(|t| t.is_valid())
                 .collect();
             if valid_transactions.is_empty() {
-                println!(
-                    "[Slot {}]: 🤷 Mempool is empty. Skipping slot.",
-                    current_slot
-                );
+                println!("[Slot {}]: Mempool is empty. Skipping slot.", current_slot);
                 continue;
             }
             println!(

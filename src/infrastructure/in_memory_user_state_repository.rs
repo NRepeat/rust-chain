@@ -13,10 +13,6 @@ impl InMemoryUserStateRepository {
             balances: HashMap::new(),
         }
     }
-
-    pub fn set_balance(&mut self, address: Uuid, balance: f64) {
-        self.balances.insert(address, balance);
-    }
 }
 
 impl UserStateRepository for InMemoryUserStateRepository {
@@ -26,6 +22,10 @@ impl UserStateRepository for InMemoryUserStateRepository {
 
     fn get_balance(&self, address: &Uuid) -> f64 {
         *self.balances.get(address).unwrap_or(&0.0)
+    }
+
+    fn set_balance(&mut self, address: Uuid, balance: f64) {
+        self.balances.insert(address, balance);
     }
 
     fn apply_transaction(&mut self, transaction: &Transaction) -> bool {
