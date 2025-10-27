@@ -1,4 +1,5 @@
-pub mod add_new_block;
+pub mod add_block_to_chain;
 pub mod create_genesis_block;
-pub mod process_mempool;
-pub mod validate_chain;
+pub mod create_new_block;
+pub mod pos_consensus_loop;
+pub mod sync_chain_task;

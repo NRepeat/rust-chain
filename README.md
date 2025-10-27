@@ -7,7 +7,7 @@ This project is a simple implementation of a blockchain in Rust, built following
 The project is structured following the principles of **Clean Architecture**. This means the code is organized in layers, with the domain logic at the center and dependencies pointing inwards.
 
 -   **Domain Layer (`src/domain`):** Contains the core business logic and entities of the application. This includes `Block`, `Transaction`, `Mempool`, and the repository traits (`BlockchainRepository`, `MempoolRepository`, `StateRepository`). This layer has no dependencies on other layers.
--   **Application/Use Case Layer (`src/blockchain`):** Orchestrates the flow of data and calls the domain layer to perform business logic. This layer contains the use cases like `create_genesis_block`, `add_new_block`, and `process_mempool`.
+-   **Application/Use Case Layer (`src/blockchain`):** Orchestrates the flow of data and calls the domain layer to perform business logic. This layer contains the use cases like `create_genesis_block`, `create_new_block`, and `process_mempool`.
 -   **Infrastructure Layer (`src/infrastructure`):** Contains the concrete implementations of the repository traits. In this project, we use in-memory repositories (`InMemoryBlockchainRepository`, `InMemoryMempoolRepository`, `InMemoryStateRepository`). This layer depends on the domain layer.
 -   **Entry Point (`src/main.rs`):** The main executable that composes the application by instantiating the concrete implementations and injecting them into the use cases.
 
@@ -51,7 +51,7 @@ The project uses the repository pattern to decouple the domain logic from the da
 ## Use Cases
 
 -   **`create_genesis_block`**: Creates the first block in the chain.
--   **`add_new_block`**: Mines a new block with a given set of transactions and adds it to the chain.
+-   **`create_new_block`**: Mines a new block with a given set of transactions and adds it to the chain.
 -   **`validate_chain`**: Checks the integrity of the entire blockchain.
 -   **`process_mempool`**: Processes the transactions in the mempool, validates them against the current state (balances), and returns the valid transactions to be included in the next block.
 

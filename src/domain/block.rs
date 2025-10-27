@@ -1,33 +1,68 @@
-use crate::domain::transaction::Transaction;
-use sha256::digest;
+use crate::domain::{block_header::BlockHeader, transaction::Transaction};
+use hex;
+use hmac::digest::KeyInit;
+use hmac::{Hmac, Mac};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-#[derive(Debug, Clone)]
+type HmacSha256 = Hmac<Sha256>;
+
+#[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Block {
     pub index: u32,
+    pub header: BlockHeader,
     pub timestamp: u64,
     pub transactions: Vec<Transaction>,
-    pub previous_hash: String,
     pub hash: String,
-    pub nonce: u32,
+    pub signature: String,
 }
 
 impl Block {
     pub fn new(
         index: u32,
         timestamp: u64,
+        proposer_id: String,
+        height: u64,
         transactions: Vec<Transaction>,
         previous_hash: String,
+        shared_key: String,
     ) -> Self {
+        let header = BlockHeader {
+            height,
+            parent_hash: previous_hash,
+            proposer_id: proposer_id.clone(),
+            tx_count: transactions.len(),
+        };
         let mut block = Self {
             index,
+            header,
             timestamp,
             transactions,
-            previous_hash,
+            signature: String::new(),
             hash: String::new(),
-            nonce: 0,
         };
+
         block.hash = block.calculate_hash();
+
+        let mut mac = <HmacSha256 as KeyInit>::new_from_slice(shared_key.as_bytes())
+            .expect("HMAC new from slice failed");
+        mac.update(block.hash.as_bytes());
+        block.signature = hex::encode(mac.finalize().into_bytes());
         block
+    }
+
+    pub fn verify_signature(&self, shared_key: &str) -> bool {
+        let mut mac = <HmacSha256 as KeyInit>::new_from_slice(shared_key.as_bytes())
+            .expect("HMAC new from slice failed");
+
+        mac.update(self.hash.as_bytes());
+
+        let received_bytes = match hex::decode(&self.signature) {
+            Ok(bytes) => bytes,
+            Err(_) => return false,
+        };
+
+        mac.verify_slice(&received_bytes).is_ok()
     }
 
     pub fn calculate_hash(&self) -> String {
@@ -38,18 +73,17 @@ impl Block {
             .collect::<Vec<String>>()
             .join("");
 
-        let s = format!(
-            "{}{}{}{}{}",
-            self.index, self.timestamp, transactions_string, self.previous_hash, self.nonce
-        );
-        digest(s.as_bytes())
-    }
+        let header_json = serde_json::to_string(&self.header).unwrap();
 
-    pub fn mine_block(&mut self, difficulty: u32) {
-        let target = "0".repeat(difficulty as usize);
-        while !self.hash.starts_with(&target) {
-            self.nonce += 1;
-            self.hash = self.calculate_hash();
-        }
+        let s = format!(
+            "{}{}{}{}",
+            self.index, self.timestamp, transactions_string, header_json
+        );
+
+        let mut hasher = Sha256::new();
+        hasher.update(s.as_bytes());
+        let result_bytes = hasher.finalize();
+
+        hex::encode(result_bytes)
     }
 }

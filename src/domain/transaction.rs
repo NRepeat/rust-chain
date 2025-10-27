@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Transaction {
     pub id: Uuid,
     pub from: Uuid,
@@ -24,10 +26,10 @@ impl Transaction {
             timestamp,
         }
     }
-    pub fn is_valid(&self) -> bool {
-        return self.from != self.to
-            && !self.amount.is_nan()
-            && !self.amount.is_infinite()
-            && self.amount > 0.0;
-    }
+    // pub fn is_valid(&self) -> bool {
+    //     return self.from != self.to
+    //         && !self.amount.is_nan()
+    //         && !self.amount.is_infinite()
+    //         && self.amount > 0.0;
+    // }
 }
