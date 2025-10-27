@@ -31,11 +31,15 @@ impl<T: MempoolRepository> Mempool<T> {
         return true;
     }
 
-    pub fn get_all_transactions(&self) -> VecDeque<Transaction> {
+    pub fn get_all_transactions(&self) -> &VecDeque<Transaction> {
         self.repository.get_all_transactions()
     }
 
-    pub fn get_last_transaction(&self) -> Transaction {
-        self.repository.get_last_transactions()
+    pub fn get_last_transaction(&self) -> Option<&Transaction> {
+        self.repository.get_last_transaction()
+    }
+
+    pub fn drain_transactions(&mut self) -> VecDeque<Transaction> {
+        self.repository.drain_transactions()
     }
 }

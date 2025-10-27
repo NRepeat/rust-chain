@@ -20,13 +20,16 @@ impl MempoolRepository for InMemoryMempoolRepository {
     fn add_transaction(&mut self, transaction: Transaction) {
         self.transactions.push_back(transaction);
     }
-    fn get_all_transactions(&self) -> VecDeque<Transaction> {
-        return self.transactions.clone();
+    fn get_all_transactions(&self) -> &VecDeque<Transaction> {
+        &self.transactions
     }
-    fn get_last_transactions(&self) -> Transaction {
-        return self.transactions.back().expect("Mempool is empty").clone();
+    fn get_last_transaction(&self) -> Option<&Transaction> {
+        self.transactions.back()
     }
     fn check_exists_by_id(&self, transaction_id: &Uuid) -> bool {
         self.transactions.iter().any(|t| t.id == *transaction_id)
+    }
+    fn drain_transactions(&mut self) -> VecDeque<Transaction> {
+        self.transactions.drain(..).collect()
     }
 }
