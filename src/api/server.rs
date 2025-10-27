@@ -19,6 +19,7 @@ use axum::{
 };
 use clap::Parser;
 use reqwest::Client;
+use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 use tokio::signal;
@@ -49,6 +50,8 @@ pub async fn app() {
         node: shared_node,
         shared_key: shared_key,
         http_client: http_client.clone(),
+        vote_counts: Arc::new(Mutex::new(HashMap::new())),
+        pending_blocks: Arc::new(Mutex::new(HashMap::new())),
     };
     let consensus_state = app_state.clone();
     create_genesis_block(app_state.blockchain_repo.clone()).await;

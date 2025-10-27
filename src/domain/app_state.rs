@@ -1,8 +1,9 @@
-use std::sync::Arc;
-
 use reqwest::Client;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
+use crate::domain::block::Block;
 use crate::domain::blockchain_repository::BlockchainRepository;
 use crate::domain::mempool_repository::MempoolRepository;
 use crate::domain::node::Node;
@@ -20,6 +21,8 @@ where
     pub node: Arc<Mutex<Node>>,
     pub shared_key: String,
     pub http_client: Client,
+    pub vote_counts: Arc<Mutex<HashMap<String, Vec<String>>>>,
+    pub pending_blocks: Arc<Mutex<HashMap<String, Block>>>,
 }
 
 impl<B, M, U> Clone for AppState<B, M, U>
@@ -36,6 +39,8 @@ where
             node: Arc::clone(&self.node),
             shared_key: self.shared_key.clone(),
             http_client: self.http_client.clone(),
+            vote_counts: Arc::clone(&self.vote_counts),
+            pending_blocks: Arc::clone(&self.pending_blocks),
         }
     }
 }

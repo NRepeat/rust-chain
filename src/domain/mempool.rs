@@ -35,10 +35,6 @@ impl<T: MempoolRepository> Mempool<T> {
         self.repository.get_all_transactions()
     }
 
-    pub fn get_last_transaction(&self) -> Option<&Transaction> {
-        self.repository.get_last_transaction()
-    }
-
     pub fn drain_transactions(&mut self) -> VecDeque<Transaction> {
         self.repository.drain_transactions()
     }

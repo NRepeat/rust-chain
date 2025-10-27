@@ -1,3 +1,4 @@
+use crate::domain::block::Block;
 use crate::domain::transaction::Transaction;
 use crate::domain::user_state_repository::UserStateRepository;
 use async_trait::async_trait;
@@ -31,7 +32,8 @@ impl UserStateRepository for InMemoryUserStateRepository {
 
     fn apply_transaction(&mut self, transaction: &Transaction) -> bool {
         let sender_balance = self.get_balance(&transaction.from);
-
+        println!("Sender balance: {}", sender_balance);
+        println!("Transaction amount: {}", transaction.amount);
         if sender_balance < transaction.amount {
             println!("Insufficient balance for sender {}", transaction.from);
             return false;
@@ -49,5 +51,20 @@ impl UserStateRepository for InMemoryUserStateRepository {
             transaction.from, transaction.to
         );
         true
+    }
+    async fn rebuild_from_blocks(&mut self, blocks: &Vec<Block>) {
+        self.balances.clear();
+
+        for block in blocks.iter() {
+            for tx in &block.transactions {
+                let sender_balance = self.get_balance(&tx.from);
+                let new_sender_balance = sender_balance - tx.amount;
+                self.balances.insert(tx.from, new_sender_balance);
+
+                let receiver_balance = self.get_balance(&tx.to);
+                let new_receiver_balance = receiver_balance + tx.amount;
+                self.balances.insert(tx.to, new_receiver_balance);
+            }
+        }
     }
 }

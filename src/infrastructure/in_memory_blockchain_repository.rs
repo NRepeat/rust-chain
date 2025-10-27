@@ -24,4 +24,7 @@ impl BlockchainRepository for InMemoryBlockchainRepository {
     async fn get_last_block(&self) -> Block {
         self.blocks.last().cloned().unwrap()
     }
+    async fn replace_chain(&mut self, new_chain: Vec<Block>) {
+        self.blocks = new_chain;
+    }
 }

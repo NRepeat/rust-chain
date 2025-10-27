@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::use_cases::add_new_block::add_new_block,
+    blockchain::use_cases::create_new_block::create_new_block,
     domain::{
         app_state::AppState, block::Block, blockchain_repository::BlockchainRepository,
         mempool_repository::MempoolRepository, transaction::Transaction,
@@ -79,13 +79,26 @@ where
                 current_slot,
                 valid_transactions.len()
             );
-            let new_block: Block = add_new_block(
+            let new_block: Block = create_new_block(
                 app_state.blockchain_repo.clone(),
                 valid_transactions,
                 &my_id,
                 &shared_key,
             )
             .await;
+            {
+                let mut pending_blocks = app_state.pending_blocks.lock().await;
+                pending_blocks.insert(new_block.hash.clone(), new_block.clone());
+            }
+            {
+                let mut vote_counts = app_state.vote_counts.lock().await;
+                let voters = vote_counts
+                    .entry(new_block.hash.clone())
+                    .or_insert_with(Vec::new);
+                voters.push(my_id.clone());
+
+                println!("[PoS]: 🗳️  Я (Лідер) проголосував за свій блок.");
+            }
             println!(
                 "[Slot {}]:  Broadcasting block #{} to peers...",
                 current_slot, new_block.header.height

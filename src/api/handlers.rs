@@ -1,4 +1,6 @@
 use crate::api::dtos::{CreateTransactionDto, CreateUserDto};
+use crate::blockchain::use_cases::add_block_to_chain::add_block_to_chain;
+use crate::blockchain::use_cases::sync_chain_task::sync_chain_task;
 use crate::domain::blockchain_repository::BlockchainRepository;
 use crate::domain::mempool_repository::MempoolRepository;
 use crate::domain::user_state_repository::UserStateRepository;
@@ -157,6 +159,13 @@ where
         "[API /block]: 📥 Отримано блок #{} від {}",
         received_block.header.height, received_block.header.proposer_id
     );
+
+    let expected_hash = received_block.calculate_hash();
+    if received_block.hash != expected_hash {
+        println!("[API /block]: ❌ ВІДХИЛЕНО: Неправильний хеш!");
+        return (StatusCode::BAD_REQUEST, "Invalid block hash".to_string());
+    }
+
     let shared_key = app_state.shared_key.clone();
     if !received_block.verify_signature(&shared_key) {
         println!("[API /block]: ❌ ВІДХИЛЕНО: Неправильний підпис!");
@@ -165,35 +174,84 @@ where
             "Invalid block signature".to_string(),
         );
     }
+
     let mut blockchain = app_state.blockchain_repo.lock().await;
-    let last_block = blockchain.get_last_block().await;
-    if received_block.header.parent_hash != last_block.hash {
-        println!("[API /block]: ❌ ВІДХИЛЕНО: Неправильний parent_hash (Fork?)");
-        return (StatusCode::BAD_REQUEST, "Invalid parent hash".to_string());
-    }
-    println!(
-        "[API /block]: ✅ Блок #{} пройшов перевірку.",
-        received_block.header.height
-    );
-    let block_hash = received_block.hash.clone();
-    let proposer_id = received_block.header.proposer_id.clone();
-    blockchain.add_block(received_block).await;
 
-    let my_id = app_state.node.lock().await.id.clone();
-    let vote = Vote {
-        block_hash: block_hash,
-        voter_id: my_id,
-        decision: "ACK".to_string(),
-    };
-    let peers = app_state.node.lock().await.peers.clone();
-    let http_client = app_state.http_client;
-    let peer_addresses = app_state.node.lock().await.peers.clone();
-    for peer_addr in &peer_addresses {
-        let target_url = format!("http://{}/vote", peer_addr);
+    if let last_block = blockchain.get_last_block().await {
+        if received_block.header.parent_hash == last_block.hash
+            && received_block.header.height == last_block.header.height + 1
+        {
+            {
+                let mut user_state = app_state.user_state_repo.lock().await;
+                for tx in &received_block.transactions {
+                    if !user_state.apply_transaction(tx) {
+                        println!(
+                            "[API /block]: ❌ ВІДХИЛЕНО: Блок содержит невалидную транзакцию {}.",
+                            tx.id
+                        );
 
-        let _ = http_client.post(&target_url).json(&vote).send().await;
+                        return (
+                            StatusCode::BAD_REQUEST,
+                            "Block contains invalid transactions".to_string(),
+                        );
+                    }
+                }
+            }
+
+            println!(
+                "[API /block]: ✅ Блок #{} пройшов усі перевірки.",
+                received_block.header.height
+            );
+
+            let block_hash = received_block.hash.clone();
+            blockchain.add_block(received_block).await;
+
+            drop(blockchain);
+
+            let (my_id, peer_addresses) = {
+                let node = app_state.node.lock().await;
+                (node.id.clone(), node.peers.clone())
+            };
+
+            let vote = Vote {
+                block_hash: block_hash,
+                voter_id: my_id,
+                decision: "ACK".to_string(),
+            };
+
+            let http_client = app_state.http_client;
+            for peer_addr in &peer_addresses {
+                let target_url = format!("http://{}/vote", peer_addr);
+                let _ = http_client.post(&target_url).json(&vote).send().await;
+            }
+
+            return (StatusCode::OK, "Block accepted, ACK sent".to_string());
+        } else if received_block.header.height > last_block.header.height {
+            println!(
+                "[API /block]: 🍴 КОНФЛІКТ (FORK)! Наша висота {}, отримано {}.",
+                last_block.header.height, received_block.header.height
+            );
+
+            tokio::spawn(sync_chain_task(app_state.clone()));
+
+            return (
+                StatusCode::CONFLICT,
+                "Fork detected, starting sync".to_string(),
+            );
+        } else {
+            println!("[API /block]: ❌ ВІДХИЛЕНО: Блок належить до коротшого ланцюга.");
+            return (
+                StatusCode::BAD_REQUEST,
+                "Block is from a shorter chain".to_string(),
+            );
+        }
+    } else {
+        println!("[API /block]: ❌ ВІДХИЛЕНО: Локальный блокчейн пуст.");
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Local chain not initialized".to_string(),
+        );
     }
-    (StatusCode::OK, "Block accepted, ACK sent".to_string())
 }
 
 pub async fn accept_vote_handler<B, M, U>(
@@ -205,6 +263,22 @@ where
     M: MempoolRepository + Send + Sync + 'static,
     U: UserStateRepository + Send + Sync + 'static,
 {
+    if vote.decision != "ACK" {
+        return (StatusCode::OK, "Vote received (NACK)".to_string());
+    }
+    let total_validators = {
+        let node = app_state.node.lock().await;
+        node.validator_ids.len()
+    };
+    let quorum_needed = (total_validators / 2) + 1;
+    let mut vote_counts = app_state.vote_counts.lock().await;
+    let voters_for_this_block = vote_counts
+        .entry(vote.block_hash.clone())
+        .or_insert_with(Vec::new);
+    if !voters_for_this_block.contains(&vote.voter_id) {
+        voters_for_this_block.push(vote.voter_id.clone());
+    }
+    let current_vote_count = voters_for_this_block.len();
     let my_id = app_state.node.lock().await.id.clone();
     println!(
         "[API /vote]: 📥 (Я {}) Отримано голос від {}: {} за блок ...{}",
@@ -213,14 +287,30 @@ where
         vote.decision,
         &vote.block_hash[..5]
     );
+    if current_vote_count >= quorum_needed {
+        println!(
+            "[API /vote]: КВОРУМ ЗІБРАНО! Лідер додає блок ...{}!",
+            &vote.block_hash[..5]
+        );
 
-    // --- ЛОГІКА ЛІДЕРА (Пункт 2.6) ---
-    // 1. Сохранить этот голос где-то (напр., в новом `Arc<Mutex<HashMap>>`)
-    // 2. Посчитать, сколько голосов "ACK" для `vote.block_hash`
-    // 3. Если `count >= (n-1)/2` (кворум), то Лидер...
-    // 4. ...добавляет блок в свой `blockchain_repo`
+        let block_to_add = {
+            let mut pending_blocks = app_state.pending_blocks.lock().await;
+            pending_blocks.remove(&vote.block_hash)
+        };
 
-    // (Пока мы просто выводим лог)
-
+        if let Some(block) = block_to_add {
+            add_block_to_chain(app_state.blockchain_repo.clone(), block.clone()).await;
+            println!(
+                "[API /vote]: ✅ Лідер успішно додав блок #{} до свого ланцюга.",
+                block.clone().header.height
+            );
+            vote_counts.remove(&vote.block_hash);
+        } else {
+            println!(
+                "[API /vote]: ⚠️ Блок ...{} вже був доданий.",
+                &vote.block_hash[..5]
+            );
+        }
+    }
     (StatusCode::OK, "Vote received".to_string())
 }

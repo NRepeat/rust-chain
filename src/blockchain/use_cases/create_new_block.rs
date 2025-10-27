@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
-pub async fn add_new_block<B>(
+pub async fn create_new_block<B>(
     blockchain_repository: Arc<Mutex<B>>,
     transactions: Vec<Transaction>,
     proposer_id: &str,
@@ -13,7 +13,7 @@ pub async fn add_new_block<B>(
 where
     B: BlockchainRepository + Send + Sync + 'static,
 {
-    let mut repo_lock = blockchain_repository.lock().await;
+    let repo_lock = blockchain_repository.lock().await;
     let last_block = repo_lock.get_last_block().await;
 
     let new_block = Block::new(
@@ -29,6 +29,5 @@ where
         shared_key.to_string(),
     );
 
-    repo_lock.add_block(new_block.clone()).await;
     new_block
 }
