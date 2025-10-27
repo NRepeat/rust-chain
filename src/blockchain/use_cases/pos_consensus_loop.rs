@@ -56,7 +56,6 @@ where
 
             let transactions_vec: Vec<Transaction> = transactions_deque.into_iter().collect();
             let mut user_state = app_state.user_state_repo.lock().await;
-            println!("Genesis block created  {:?}", transactions_vec);
             let mut valid_transactions: Vec<Transaction> = Vec::new();
 
             for tx in transactions_vec {

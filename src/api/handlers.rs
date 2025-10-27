@@ -14,6 +14,8 @@ use axum::{
 };
 use serde_json::{Value, json};
 use std::collections::HashMap;
+use std::env;
+use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 pub async fn get_all_blocks_handler<B, M, U>(
@@ -143,6 +145,34 @@ where
     let mut user_state_repo = app_state.user_state_repo.lock().await;
     let new_user_id = Uuid::new_v4();
     user_state_repo.set_balance(new_user_id, payload.balance);
+
+    let faucet_wallet_str =
+        env::var("FAUCET_WALLET_ID").expect("FAUCET_WALLET_ID must be set in .env");
+    let faucet_wallet_id =
+        Uuid::parse_str(&faucet_wallet_str).expect("Failed to parse FAUCET_WALLET_ID");
+
+    let new_user_id = Uuid::new_v4();
+    let funding_tx = Transaction {
+        id: Uuid::new_v4(),
+        from: faucet_wallet_id,
+        to: new_user_id,
+        amount: payload.balance,
+        timestamp: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    };
+
+    {
+        let mut mempool = app_state.mempool_repo.lock().await;
+        mempool.add_transaction(funding_tx);
+    }
+
+    println!(
+        "[API /user]: 💸 Funding transaction created for new user {}",
+        new_user_id
+    );
+
     Json(json!({ "id": new_user_id }))
 }
 
@@ -177,7 +207,8 @@ where
 
     let mut blockchain = app_state.blockchain_repo.lock().await;
 
-    if let last_block = blockchain.get_last_block().await {
+    let last_block = blockchain.get_last_block().await;
+    {
         if received_block.header.parent_hash == last_block.hash
             && received_block.header.height == last_block.header.height + 1
         {
@@ -245,12 +276,6 @@ where
                 "Block is from a shorter chain".to_string(),
             );
         }
-    } else {
-        println!("[API /block]: ❌ ВІДХИЛЕНО: Локальный блокчейн пуст.");
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Local chain not initialized".to_string(),
-        );
     }
 }
 
