@@ -7,3 +7,4 @@ pub mod mempool_repository;
 pub mod node;
 pub mod transaction;
 pub mod user_state_repository;
+pub mod vote;

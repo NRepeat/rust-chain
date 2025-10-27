@@ -19,13 +19,14 @@ where
     let mut current_slot: u64 = 0;
     let http_client = Client::new();
 
+    // vec!["v1", "v2", "v3"],
     let (my_id, peer_addresses, shared_key, mut validator_list) = {
         let node = app_state.node.lock().await;
         (
             node.id.clone(),
             node.peers.clone(),
             app_state.shared_key.clone(),
-            vec!["v1", "v2", "v3"],
+            node.validator_ids.clone(),
         )
     };
     println!("[PoS ]: Id: {}, Validators: {:?}", my_id, validator_list);
@@ -40,8 +41,7 @@ where
         current_slot += 1;
 
         let leader_index = (current_slot - 1) as usize % total_validators;
-        let leader_id = validator_list[leader_index];
-
+        let leader_id: String = validator_list[leader_index].clone();
         println!("[Slot {}]: Leader - {}", current_slot, leader_id);
 
         if my_id == leader_id {
@@ -55,11 +55,21 @@ where
             };
 
             let transactions_vec: Vec<Transaction> = transactions_deque.into_iter().collect();
+            let mut user_state = app_state.user_state_repo.lock().await;
             println!("Genesis block created  {:?}", transactions_vec);
-            let valid_transactions: Vec<Transaction> = transactions_vec
-                .into_iter()
-                .filter(|t| t.is_valid())
-                .collect();
+            let mut valid_transactions: Vec<Transaction> = Vec::new();
+
+            for tx in transactions_vec {
+                if user_state.apply_transaction(&tx) {
+                    valid_transactions.push(tx);
+                } else {
+                    println!(
+                        "[Slot {}]: Transaction {} rejected (insufficient funds).",
+                        current_slot, tx.id
+                    );
+                }
+            }
+
             if valid_transactions.is_empty() {
                 println!("[Slot {}]: Mempool is empty. Skipping slot.", current_slot);
                 continue;
@@ -72,12 +82,12 @@ where
             let new_block: Block = add_new_block(
                 app_state.blockchain_repo.clone(),
                 valid_transactions,
-                my_id.clone(),
-                shared_key.clone(),
+                &my_id,
+                &shared_key,
             )
             .await;
             println!(
-                "[Slot {}]: 📢 Broadcasting block #{} to peers...",
+                "[Slot {}]:  Broadcasting block #{} to peers...",
                 current_slot, new_block.header.height
             );
             for peer_addr in &peer_addresses {
@@ -87,7 +97,7 @@ where
             }
         } else {
             println!(
-                "[Slot {}]: ⏳ I'm a VALIDATOR. Waiting for block from {}.",
+                "[Slot {}]:  I'm a VALIDATOR. Waiting for block from {}.",
                 current_slot, leader_id
             );
         }

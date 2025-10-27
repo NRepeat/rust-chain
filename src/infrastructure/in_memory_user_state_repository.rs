@@ -1,5 +1,6 @@
 use crate::domain::transaction::Transaction;
 use crate::domain::user_state_repository::UserStateRepository;
+use async_trait::async_trait;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -14,7 +15,7 @@ impl InMemoryUserStateRepository {
         }
     }
 }
-
+#[async_trait]
 impl UserStateRepository for InMemoryUserStateRepository {
     fn get_balances(&self) -> &HashMap<Uuid, f64> {
         &self.balances

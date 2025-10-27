@@ -7,8 +7,8 @@ use tokio::sync::Mutex;
 pub async fn add_new_block<B>(
     blockchain_repository: Arc<Mutex<B>>,
     transactions: Vec<Transaction>,
-    proposer_id: String,
-    shared_key: String,
+    proposer_id: &str,
+    shared_key: &str,
 ) -> Block
 where
     B: BlockchainRepository + Send + Sync + 'static,
@@ -26,7 +26,7 @@ where
         last_block.header.height + 1,
         transactions,
         last_block.hash.clone(),
-        shared_key,
+        shared_key.to_string(),
     );
 
     repo_lock.add_block(new_block.clone()).await;

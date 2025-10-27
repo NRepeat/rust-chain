@@ -88,7 +88,6 @@ where
             .into_response();
     }
 
-    // Ensure transaction amount is positive
     if payload.amount <= 0.0 {
         return (
             StatusCode::BAD_REQUEST,
@@ -105,41 +104,27 @@ where
             .into_response();
     }
 
-    // ####################
-    // # User State Validation
-    // ####################
     let user_state_repo = app_state.user_state_repo.lock().await;
 
-    // Ensure sender exists
     if !user_state_repo.get_balances().contains_key(&payload.from) {
         return (StatusCode::NOT_FOUND, "Sender not found").into_response();
     }
 
-    // Ensure receiver exists
     if !user_state_repo.get_balances().contains_key(&payload.to) {
         return (StatusCode::NOT_FOUND, "Receiver not found").into_response();
     }
 
-    // Ensure sender has sufficient balance
     let sender_balance = user_state_repo.get_balance(&payload.from);
     if sender_balance < payload.amount {
         return (StatusCode::BAD_REQUEST, "Insufficient balance").into_response();
     }
 
-    // ####################
-    // # Mempool Validation
-    // ####################
     let transaction = Transaction::new(payload.from, payload.to, payload.amount);
     let mut mempool_repo = app_state.mempool_repo.lock().await;
 
-    // Ensure transaction does not already exist in the mempool
     if mempool_repo.check_exists_by_id(&transaction.id) {
         return (StatusCode::CONFLICT, "Transaction already exists").into_response();
     }
-
-    // ####################
-    // # Add to Mempool
-    // ####################
     mempool_repo.add_transaction(transaction.clone());
     (StatusCode::CREATED, Json(transaction)).into_response()
 }
@@ -156,4 +141,39 @@ where
     let new_user_id = Uuid::new_v4();
     user_state_repo.set_balance(new_user_id, payload.balance);
     Json(json!({ "id": new_user_id }))
+}
+
+pub async fn accept_block_handler<B, M, U>(
+    State(app_state): State<AppState<B, M, U>>,
+    Json(received_block): Json<Block>,
+) -> (StatusCode, String)
+where
+    B: BlockchainRepository + Send + Sync + 'static,
+    M: MempoolRepository + Send + Sync + 'static,
+    U: UserStateRepository + Send + Sync + 'static,
+{
+    println!(
+        "[API /block]: 📥 Отримано блок #{} від {}",
+        received_block.header.height, received_block.header.proposer_id
+    );
+    let shared_key = app_state.shared_key.clone();
+    if !received_block.verify_signature(&shared_key) {
+        println!("[API /block]: ❌ ВІДХИЛЕНО: Неправильний підпис!");
+        return (
+            StatusCode::BAD_REQUEST,
+            "Invalid block signature".to_string(),
+        );
+    }
+    let mut blockchain = app_state.blockchain_repo.lock().await;
+    let last_block = blockchain.get_last_block().await;
+    if received_block.header.parent_hash != last_block.hash {
+        println!("[API /block]: ❌ ВІДХИЛЕНО: Неправильний parent_hash (Fork?)");
+        return (StatusCode::BAD_REQUEST, "Invalid parent hash".to_string());
+    }
+    println!(
+        "[API /block]: ✅ Блок #{} пройшов перевірку.",
+        received_block.header.height
+    );
+    blockchain.add_block(received_block).await;
+    (StatusCode::OK, "Block accepted and added".to_string())
 }

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use reqwest::Client;
 use tokio::sync::Mutex;
 
 use crate::domain::blockchain_repository::BlockchainRepository;
@@ -18,6 +19,7 @@ where
     pub user_state_repo: Arc<Mutex<U>>,
     pub node: Arc<Mutex<Node>>,
     pub shared_key: String,
+    pub http_client: Client,
 }
 
 impl<B, M, U> Clone for AppState<B, M, U>
@@ -33,6 +35,7 @@ where
             user_state_repo: Arc::clone(&self.user_state_repo),
             node: Arc::clone(&self.node),
             shared_key: self.shared_key.clone(),
+            http_client: self.http_client.clone(),
         }
     }
 }
