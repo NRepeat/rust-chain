@@ -1,6 +1,5 @@
-use crate::blockchain::services::BlockchainRepository;
-use crate::domain::block::Block;
 use crate::domain::transaction::Transaction;
+use crate::domain::{block::Block, blockchain_repository::BlockchainRepository};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn add_new_block(

@@ -1,5 +1,4 @@
-use crate::blockchain::services::BlockchainRepository;
-use crate::domain::block::Block;
+use crate::domain::{block::Block, blockchain_repository::BlockchainRepository};
 
 pub struct InMemoryBlockchainRepository {
     blocks: Vec<Block>,

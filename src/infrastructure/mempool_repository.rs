@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use uuid::Uuid;
 
-use crate::{blockchain::services::MempoolRepsoitory, domain::transaction::Transaction};
+use crate::domain::{mempool_repository::MempoolRepository, transaction::Transaction};
 
 pub struct InMemoryMempoolRepository {
     pub transactions: VecDeque<Transaction>,
@@ -16,7 +16,7 @@ impl InMemoryMempoolRepository {
     }
 }
 
-impl MempoolRepsoitory for InMemoryMempoolRepository {
+impl MempoolRepository for InMemoryMempoolRepository {
     fn add_transaction(&mut self, transaction: Transaction) {
         self.transactions.push_back(transaction);
     }

@@ -1,4 +1,4 @@
-use crate::blockchain::services::BlockchainRepository;
+use crate::domain::blockchain_repository::BlockchainRepository;
 
 pub fn validate_chain(blockchain_repository: &dyn BlockchainRepository) -> bool {
     let blocks = blockchain_repository.get_all_blocks();

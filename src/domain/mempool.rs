@@ -1,16 +1,13 @@
-use crate::{
-    blockchain::services::MempoolRepsoitory, domain::transaction::Transaction,
-    infrastructure::mempool_rpository::InMemoryMempoolRepository,
-};
+use crate::domain::{mempool_repository::MempoolRepository, transaction::Transaction};
 use std::collections::VecDeque;
-pub struct Mempool {
-    repository: InMemoryMempoolRepository,
+
+pub struct Mempool<T: MempoolRepository> {
+    repository: T,
 }
-impl Mempool {
-    pub fn new() -> Self {
-        Self {
-            repository: InMemoryMempoolRepository::new(),
-        }
+
+impl<T: MempoolRepository> Mempool<T> {
+    pub fn new(repository: T) -> Self {
+        Self { repository }
     }
 
     pub fn add_transaction(&mut self, transaction: Transaction) {

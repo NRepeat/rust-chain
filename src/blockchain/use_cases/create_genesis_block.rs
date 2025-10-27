@@ -1,5 +1,4 @@
-use crate::blockchain::services::BlockchainRepository;
-use crate::domain::block::Block;
+use crate::domain::{block::Block, blockchain_repository::BlockchainRepository};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn create_genesis_block(blockchain_repository: &mut dyn BlockchainRepository, difficulty: u32) {
