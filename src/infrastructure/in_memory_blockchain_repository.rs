@@ -21,7 +21,7 @@ impl BlockchainRepository for InMemoryBlockchainRepository {
         self.blocks.push(block);
     }
 
-    async fn get_last_block(&self) -> Option<Block> {
-        self.blocks.last().cloned()
+    async fn get_last_block(&self) -> Block {
+        self.blocks.last().cloned().unwrap()
     }
 }

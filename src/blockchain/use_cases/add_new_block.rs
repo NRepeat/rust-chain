@@ -9,25 +9,26 @@ pub async fn add_new_block<B>(
     transactions: Vec<Transaction>,
     proposer_id: String,
     shared_key: String,
-) where
+) -> Block
+where
     B: BlockchainRepository + Send + Sync + 'static,
 {
     let mut repo_lock = blockchain_repository.lock().await;
+    let last_block = repo_lock.get_last_block().await;
 
-    if let Some(last_block) = repo_lock.get_last_block().await {
-        let new_block = Block::new(
-            last_block.index + 1,
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-            proposer_id.to_string(),
-            last_block.header.height + 1,
-            transactions,
-            last_block.hash.clone(),
-            shared_key,
-        );
+    let new_block = Block::new(
+        last_block.index + 1,
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+        proposer_id.to_string(),
+        last_block.header.height + 1,
+        transactions,
+        last_block.hash.clone(),
+        shared_key,
+    );
 
-        repo_lock.add_block(new_block).await;
-    }
+    repo_lock.add_block(new_block.clone()).await;
+    new_block
 }

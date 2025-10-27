@@ -1,11 +1,12 @@
 use crate::{
     blockchain::use_cases::add_new_block::add_new_block,
     domain::{
-        app_state::AppState, blockchain_repository::BlockchainRepository,
+        app_state::AppState, block::Block, blockchain_repository::BlockchainRepository,
         mempool_repository::MempoolRepository, transaction::Transaction,
         user_state_repository::UserStateRepository,
     },
 };
+use reqwest::Client;
 use std::{collections::VecDeque, time::Duration};
 
 pub async fn pos_consensus_loop<B, M, U>(app_state: AppState<B, M, U>)
@@ -16,16 +17,21 @@ where
 {
     let slot_duration = Duration::from_secs(5);
     let mut current_slot: u64 = 0;
+    let http_client = Client::new();
 
-    let mut validator_list = vec!["v1", "v2", "v3"];
+    let (my_id, peer_addresses, shared_key, mut validator_list) = {
+        let node = app_state.node.lock().await;
+        (
+            node.id.clone(),
+            node.peers.clone(),
+            app_state.shared_key.clone(),
+            vec!["v1", "v2", "v3"],
+        )
+    };
+    println!("[PoS ]: Id: {}, Validators: {:?}", my_id, validator_list);
     validator_list.sort();
 
     let total_validators = validator_list.len();
-
-    let my_id = {
-        let node = app_state.node.lock().await;
-        node.id.clone()
-    };
 
     println!("[PoS ]: Id: {}, Validators: {:?}", my_id, validator_list);
 
@@ -47,7 +53,9 @@ where
                 let mut mempool = app_state.mempool_repo.lock().await;
                 mempool.drain_transactions()
             };
+
             let transactions_vec: Vec<Transaction> = transactions_deque.into_iter().collect();
+            println!("Genesis block created  {:?}", transactions_vec);
             let valid_transactions: Vec<Transaction> = transactions_vec
                 .into_iter()
                 .filter(|t| t.is_valid())
@@ -64,13 +72,22 @@ where
                 current_slot,
                 valid_transactions.len()
             );
-            let new_block = add_new_block(
+            let new_block: Block = add_new_block(
                 app_state.blockchain_repo.clone(),
                 valid_transactions,
                 my_id.clone(),
-                app_state.shared_key.clone(),
+                shared_key.clone(),
             )
             .await;
+            println!(
+                "[Slot {}]: 📢 Broadcasting block #{} to peers...",
+                current_slot, new_block.header.height
+            );
+            for peer_addr in &peer_addresses {
+                let target_url = format!("http://{}/block", peer_addr);
+                println!("[Slot {}]: -> sending to {}", current_slot, target_url);
+                let _ = http_client.post(&target_url).json(&new_block).send().await;
+            }
         } else {
             println!(
                 "[Slot {}]: ⏳ I'm a VALIDATOR. Waiting for block from {}.",

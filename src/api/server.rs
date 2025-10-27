@@ -1,5 +1,6 @@
 use crate::api::args::Args;
 use crate::api::handlers::get_all_blocks_handler;
+use crate::blockchain::use_cases::create_genesis_block::create_genesis_block;
 use crate::blockchain::use_cases::pos_consensus_loop::pos_consensus_loop;
 use crate::domain::app_state::AppState;
 use crate::domain::node::Node;
@@ -39,6 +40,8 @@ pub async fn app() {
         shared_key: shared_key,
     };
     let consensus_state = app_state.clone();
+    create_genesis_block(app_state.blockchain_repo.clone()).await;
+
     tokio::spawn(pos_consensus_loop(consensus_state));
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
