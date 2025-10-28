@@ -103,7 +103,7 @@ where
                 current_slot, new_block.header.height
             );
             for peer_addr in &peer_addresses {
-                let target_url = format!("http://{}/block", peer_addr);
+                let target_url = format!("http://localhost:{}/block", peer_addr);
                 println!("[Slot {}]: -> sending to {}", current_slot, target_url);
                 let _ = http_client.post(&target_url).json(&new_block).send().await;
             }
